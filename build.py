@@ -82,7 +82,6 @@ def configure(arch, host, install_dir, src_dir):
         os.path.join(src_dir, 'configure'),
         '--target={}'.format(ndk.abis.arch_to_triple(arch)),
         '--host={}'.format(configure_host),
-        '--enable-gold=default',
         '--enable-initfini-array',
         '--enable-plugins',
         '--with-sysroot={}'.format(sysroot),
@@ -91,6 +90,11 @@ def configure(arch, host, install_dir, src_dir):
 
     if arch == 'arm64':
         configure_args.append('--enable-fix-cortex-a53-835769')
+        configure_args.append('--enable-gold')
+    else:
+        # Gold for aarch64 currently emits broken debug info.
+        # https://issuetracker.google.com/70838247
+        configure_args.append('--enable-gold=default')
 
     if not is_windows:
         # Multithreaded linking is implemented with pthreads, which we
@@ -139,6 +143,10 @@ def configure(arch, host, install_dir, src_dir):
         env['CFLAGS'] = '-m32'
         env['CXXFLAGS'] = '-m32'
         env['LDFLAGS'] = '-m32'
+    else:
+        env['CFLAGS'] = '-m64'
+        env['CXXFLAGS'] = '-m64'
+        env['LDFLAGS'] = '-m64'
 
     env_args = ['env'] + ['='.join([k, v]) for k, v in env.items()]
     check_call(env_args + configure_args)
@@ -162,7 +170,7 @@ def dist(dist_dir, base_dir, package_name):
     else:
         compress_arg = '-j'
 
-    package_path = os.path.join(dist_dir, package_name + 'tar.bz2')
+    package_path = os.path.join(dist_dir, package_name + '.tar.bz2')
     cmd = [
         'tar', compress_arg, '-cf', package_path, '-C', base_dir, package_name,
     ]
