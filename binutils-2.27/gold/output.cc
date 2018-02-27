@@ -1224,6 +1224,26 @@ Output_reloc<elfcpp::SHT_RELA, dynamic, size, big_endian>::write(
   orel.put_r_addend(addend);
 }
 
+// Write out a Relr relocation.
+
+template<bool dynamic, int size, bool big_endian>
+void
+Output_reloc<elfcpp::SHT_RELR, dynamic, size, big_endian>::write(
+    unsigned char* pov) const
+{
+  elfcpp::Relr_write<size, big_endian> orel(pov);
+  if (this->bits_ == 0)
+    {
+      // This is not a continuation entry. Output full address.
+      orel.put_r_data(this->rel_.get_address());
+    }
+  else
+    {
+      // This is a continuation entry. Output the bitmap.
+      orel.put_r_data((this->bits_<<1)|1);
+    }
+}
+
 // Output_data_reloc_base methods.
 
 // Adjust the output section.
@@ -1237,6 +1257,8 @@ Output_data_reloc_base<sh_type, dynamic, size, big_endian>
     os->set_entsize(elfcpp::Elf_sizes<size>::rel_size);
   else if (sh_type == elfcpp::SHT_RELA)
     os->set_entsize(elfcpp::Elf_sizes<size>::rela_size);
+  else if (sh_type == elfcpp::SHT_RELR)
+    os->set_entsize(elfcpp::Elf_sizes<size>::relr_size);
   else
     gold_unreachable();
 
@@ -1274,6 +1296,15 @@ Output_data_reloc_base<sh_type, dynamic, size, big_endian>::do_write(
 {
   typedef Output_reloc_writer<sh_type, dynamic, size, big_endian> Writer;
   this->do_write_generic<Writer>(of);
+}
+
+template<bool dynamic, int size, bool big_endian>
+void
+Output_data_reloc<elfcpp::SHT_RELR, dynamic, size, big_endian>::do_write(
+    Output_file* of)
+{
+  typedef Output_reloc_writer<elfcpp::SHT_RELR, dynamic, size, big_endian> Writer;
+  this->template do_write_generic<Writer>(of);
 }
 
 // Class Output_relocatable_relocs.
@@ -5491,6 +5522,26 @@ class Output_data_reloc<elfcpp::SHT_RELA, true, 64, false>;
 #ifdef HAVE_TARGET_64_BIG
 template
 class Output_data_reloc<elfcpp::SHT_RELA, true, 64, true>;
+#endif
+
+#ifdef HAVE_TARGET_32_LITTLE
+template
+class Output_data_reloc<elfcpp::SHT_RELR, true, 32, false>;
+#endif
+
+#ifdef HAVE_TARGET_32_BIG
+template
+class Output_data_reloc<elfcpp::SHT_RELR, true, 32, true>;
+#endif
+
+#ifdef HAVE_TARGET_64_LITTLE
+template
+class Output_data_reloc<elfcpp::SHT_RELR, true, 64, false>;
+#endif
+
+#ifdef HAVE_TARGET_64_BIG
+template
+class Output_data_reloc<elfcpp::SHT_RELR, true, 64, true>;
 #endif
 
 #ifdef HAVE_TARGET_32_LITTLE
